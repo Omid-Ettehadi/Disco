@@ -32,7 +32,7 @@ int switch6val;
 
 // Sampling
 unsigned long lastSend;
-int sendRate = 500;
+int sendRate = 1000;
 
 void setup() 
 {

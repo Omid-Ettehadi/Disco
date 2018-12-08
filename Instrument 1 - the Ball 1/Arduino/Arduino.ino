@@ -20,10 +20,10 @@
 
 // Definitions
 #define LEDpin 21
-#define NUM_LEDS 16
+#define NUM_LEDS 17
 
 // Objects
-Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_LEDS, LEDpin, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel LEDstrip = Adafruit_NeoPixel(NUM_LEDS, LEDpin, NEO_GRB + NEO_KHZ800);
 Adafruit_BNO055 orientationSensor = Adafruit_BNO055();
 
 // PubNub Details
@@ -32,28 +32,30 @@ const static char subkey[] = "sub-c-c92fc548-f343-11e8-b085-b2b44c5b7fba";
 const static char pubChannel[] = "musicChannel";
 
 // Variables
-String whoAmI = "orientationSensor";
+String whoAmI = "theBallOne";
 float xOrientation = 0, yOrientation = 0, zOrientation = 0;                 // X, Y & Z Orientation
 float lastOrientationX = 0, lastOrientationY = 0, lastOrientationZ = 0;     // Save previous X, Y & Z Orientation                           
-float velocityX, velocityY, velocityZ;                                      // X, Y & Z Velocity
+float velocityX = 0, velocityY = 0, velocityZ = 0;                          // X, Y & Z Velocity
 float averageVelocity = 0;                                                  // Average of X & Y & Z Velocities
-float lastVelocity;                                                         // Save previous average Velocity
+bool LEDTrack = false;                                                      // Keep track of LEDs
+
+// Data
+float message = 0;                                                          // Average of all the reading of AverageVelocity during one second
+int countMessage = 0;                                                       // Counts how many values has been read over one minute
 
 // Sampling
 unsigned long lastRead;
-int sampleRate = 500;
+int sampleRate = 1000;
 
 void setup()
 {
+  // Begin serial connection
   Serial.begin(9600);
 
   // Connect to Wifi and PubNub Server
   connectStandardWifi(0);
   PubNub.begin(pubkey, subkey);
   Serial.println("PubNub Connected");
-
-  // Assign Pins
-  pinMode(LEDpin,OUTPUT);
 
   // Initialise the Orientation sensor
   if(!orientationSensor.begin())             
@@ -63,9 +65,9 @@ void setup()
   }
 
   // Setup LED Strip
-  strip.begin();
-  strip.setBrightness(100);
-  strip.show();
+  LEDstrip.begin();
+  LEDstrip.setBrightness(100);
+  LEDstrip.show();
 
   // Wait to make sure everything is correctly connected
   delay(2000); 
@@ -76,69 +78,83 @@ void setup()
 
 void loop() 
 {
-  if( millis()-lastRead >= sampleRate )
-  {
-    sensors_event_t event;                  // Create an event variable
-    orientationSensor.getEvent(&event);     // Pass it to the BNO055 object
+  sensors_event_t event;                                                    // Create an event variable
+  orientationSensor.getEvent(&event);                                       // Pass it to the BNO055 object
   
-    // Get the X, Y & Z Orientation Values 
-    xOrientation = round(event.orientation.x);
-    yOrientation = round(event.orientation.y);
-    zOrientation = round(event.orientation.z);
+  // Get the X, Y & Z Orientation Values 
+  xOrientation = round(event.orientation.x);
+  yOrientation = round(event.orientation.y);
+  zOrientation = round(event.orientation.z);
 
-    // Make sure the orientation values are all positive and between 0 & 360  
-    if (yOrientation < 0) { yOrientation = 360 + yOrientation; }
-    if (zOrientation < 0) { zOrientation = 360 + zOrientation; }
+  // Make sure the orientation values are all positive and between 0 & 360  
+  if (yOrientation < 0) { yOrientation = 360 + yOrientation; }
+  if (zOrientation < 0) { zOrientation = 360 + zOrientation; }
     
-    // Calculate the angular velocity between the previous angle, and the current angle
-    velocityX = lastOrientationX - xOrientation;
-    velocityY = lastOrientationY - yOrientation;
-    velocityZ = lastOrientationZ - zOrientation;
+  // Calculate the angular velocity between the previous angle, and the current angle
+  velocityX = lastOrientationX - xOrientation;
+  velocityY = lastOrientationY - yOrientation;
+  velocityZ = lastOrientationZ - zOrientation;
 
-    // Make sure the velocities are all positive
-    if (velocityX < 0) { velocityX = abs(velocityX); }
-    if (velocityY < 0) { velocityY = abs(velocityY); }
-    if (velocityZ < 0) { velocityZ = abs(velocityZ); }
+  // Make sure the velocities are all positive
+  if (velocityX < 0) { velocityX = abs(velocityX); }
+  if (velocityY < 0) { velocityY = abs(velocityY); }
+  if (velocityZ < 0) { velocityZ = abs(velocityZ); }
     
-    // Calculate the average of X & Y & Z velocities
-    averageVelocity = ((velocityX + velocityY + velocityZ) / 3);
+  // Calculate the average of X & Y & Z velocities
+  averageVelocity = ((velocityX + velocityY + velocityZ) / 3);
 
-    // Update the histories
-    lastVelocity = averageVelocity;
-    lastOrientationX = xOrientation;
-    lastOrientationY = yOrientation;
-    lastOrientationZ = zOrientation;
+  message += averageVelocity;
+  countMessage++;
+
+  // Update the histories
+  lastOrientationX = xOrientation;
+  lastOrientationY = yOrientation;
+  lastOrientationZ = zOrientation;
     
-    publishToPubNub();
+  /*
+  // Debugging
+  Serial.print("X: ");
+  Serial.print(xOrientation);
+  Serial.print("  Y:  ");
+  Serial.print(yOrientation);
+  Serial.print("  Z:  ");
+  Serial.println(zOrientation);
+  Serial.print("vel:  ");
+  Serial.println(averageVelocity);
+  */
 
-    /*
-    // Debugging
-    Serial.print("X: ");
-    Serial.print(xOrientation);
-    Serial.print("  Y:  ");
-    Serial.print(yOrientation);
-    Serial.print("  Z:  ");
-    Serial.println(zOrientation);
-    Serial.print("  vel:  ");
-    Serial.println(averageVelocity);
-    */
-
-    if ( xOrientation <= 10 && yOrientation <= 10 && zOrientation <= 10 ){
-      for ( int i = 0; i < NUM_LEDS; i++ )
-      {
-        strip.setPixelColor(i, 0, 0, 0);
-        strip.show();
-      }
-    } 
-    else 
+  // Turn the LED Strip on if the ball has averageVelocity higher than 5
+  if ( averageVelocity <= 5 ) 
+  {
+    if ( LEDTrack == true )
     {
       for ( int i = 0; i < NUM_LEDS; i++ )
       {
-        strip.setPixelColor(i, 0, 255, 0);
-        strip.show();
+        LEDstrip.setPixelColor(i, 0, 0, 0);
+        LEDstrip.show();
+        delay(10);
       }
+      LEDTrack = false;
     }
-        
+  } 
+  else 
+  {
+    if ( LEDTrack == false )
+    {
+      for ( int i = 0; i < NUM_LEDS; i++ )
+      {
+        LEDstrip.setPixelColor(i, 148, 0, 211);
+        LEDstrip.show();
+        delay(10);
+      }
+      LEDTrack = true;
+    }
+  }
+  
+  // Send the average of the last readings to PubNub every sampleRate milisecond
+  if( millis()-lastRead >= sampleRate )
+  {
+    publishToPubNub();
     lastRead = millis();
   }
 }
@@ -150,12 +166,12 @@ void publishToPubNub()
   DynamicJsonBuffer messageBuffer(600);                        // Create a memory buffer to hold a JSON Object
   JsonObject& pMessage = messageBuffer.createObject();         // Create a new JSON object in that buffer
 
-  // the messages
+  // The messages
   pMessage["who"] = whoAmI;
-  pMessage["xOrientation"] = xOrientation;
-  pMessage["yOrientation"] = yOrientation;
-  pMessage["zOrientation"] = zOrientation;
-  pMessage["averageVelocity"] = averageVelocity;
+  pMessage["averageVelocity"] = message;
+
+  message = 0;
+  countMessage = 0;
 
   int mSize = pMessage.measureLength() + 1;                   // Determine the size of the JSON Message
   char msg[mSize];                                            // Create a char array to hold the message

@@ -11,7 +11,8 @@ var serialPortName = "COM8";			// Serial port name
 var ardSend = {};						// JSON variable
 
 // Variables
-var switch1val, switch2val, switch3val, switch4val, switch5val, switch6val;
+var switch1val = 0, switch2val = 0, switch3val = 0, switch4val = 0, switch5val = 0, switch6val = 0;
+var whoAmI = "thePuzzle";
 
 /* -------------------- Functions -------------------- */
 function setup() 
@@ -36,7 +37,7 @@ function setup()
     serial = new p5.SerialPort();		// Create the serial port object
     serial.open(serialPortName);		// Open the serialport
     serial.on('open',ardCon);			// Open the socket connection
-	serial.on('data',dataReceived);		// Call dataReceived when new data is received
+    serial.on('data',dataReceived);		// Call dataReceived when new data is received
 }
 function draw() {}
 function windowResized() {}
@@ -50,7 +51,8 @@ function sendTheMessage()
         channel: musicChannelName,
         message: 
         {
-            switch1: switch1val,
+			who: whoAmI,
+			switch1: switch1val,
 			switch2: switch2val,
 			switch3: switch3val,
 			switch4: switch4val,
