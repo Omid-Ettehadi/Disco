@@ -57,12 +57,10 @@ function setup()
     dataServer.addListener({message: readIncoming})
     dataServer.subscribe({channels: [musicChannelName]});
 
-	/*
 	// Setting up the serial port
     serial = new p5.SerialPort();		// Create the serial port object
     serial.open(serialPortName);		// Open the serialport
     serial.on('open',ardCon);			// Open the socket connection
-	*/
 }
 function draw() 
 {
@@ -181,13 +179,13 @@ function readIncoming(inMessage)
     }
 }
 
-/* -------------------- Arduino --------------------
+/* -------------------- Arduino -------------------- */
 // Send data to Arduino
 function sendData()
 {	
-    ardSend.LEDOneStatus = PuzzleStatus;						// Add the value to the LEDOneStatus parameter on the json object
-    ardSend.LEDTwoStatus = BallOneStatus;						// Add the value to the LEDTwoStatus parameter on the json object
-	ardSend.LEDThreeStatus = BallTwoStatus;						// Add the value to the LEDThreeStatus parameter on the json object
+    ardSend.PuzzleStatus = PuzzleStatus;						// Add the value to the LEDOneStatus parameter on the json object
+    ardSend.BallOneStatus = BallOneStatus;						// Add the value to the LEDTwoStatus parameter on the json object
+	ardSend.BallTwoStatus = BallTwoStatus;						// Add the value to the LEDThreeStatus parameter on the json object
 
 	var sendString = JSON.stringify(ardSend);   				// Convert the json to a string  
     //console.log(sendString)
@@ -199,4 +197,4 @@ function sendData()
 function ardCon()
 {
     console.log("connected to the Arduino Micro! Let's Go");
-}*/
+}
