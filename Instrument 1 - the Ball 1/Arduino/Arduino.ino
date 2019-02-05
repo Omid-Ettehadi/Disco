@@ -1,5 +1,6 @@
 /*
    Creation & Computation - Digital Futures, OCAD University
+
    Created 30 Nov 2018
    by: April De Zen, & Veda Adnani, & Omid Ettehadi
 */
@@ -135,6 +136,8 @@ void loop()
         delay(10);
       }
       LEDTrack = false;
+      delay(10);
+      publishToPubNub(0);
     }
   } 
   else 
@@ -148,27 +151,32 @@ void loop()
         delay(10);
       }
       LEDTrack = true;
+      publishToPubNub(1);
     }
   }
-  
-  // Send the average of the last readings to PubNub every sampleRate milisecond
-  if( millis()-lastRead >= sampleRate )
+
+  /*if( millis()-lastRead >= sampleRate )
   {
     publishToPubNub();
     lastRead = millis();
-  }
+  }*/
 }
 
 /* -------------------- PubNub -------------------- */
-void publishToPubNub()
+void publishToPubNub(int num)
 {
   WiFiClient *client;
   DynamicJsonBuffer messageBuffer(600);                        // Create a memory buffer to hold a JSON Object
   JsonObject& pMessage = messageBuffer.createObject();         // Create a new JSON object in that buffer
 
-  // The messages
-  pMessage["who"] = whoAmI;
-  pMessage["averageVelocity"] = message;
+  if ( num = 0 ) {
+    pMessage["who"] = whoAmI;
+    pMessage["averageVelocity"] = 0;
+  } else {
+    // The messages
+    pMessage["who"] = whoAmI;
+    pMessage["averageVelocity"] = message;
+  }
 
   message = 0;
   countMessage = 0;

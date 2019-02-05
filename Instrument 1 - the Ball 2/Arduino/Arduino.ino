@@ -121,7 +121,7 @@ void loop()
   Serial.println(zOrientation);
   Serial.print("  vel:  ");
   Serial.println(averageVelocity);
-  */ 
+  */
   
   // Turn the LED Strip on if the ball has averageVelocity higher than 5
   if ( averageVelocity <= 5 ) 
@@ -135,6 +135,8 @@ void loop()
         delay(10);
       }
       LEDTrack = false;
+      delay(10);
+      publishToPubNub(0);
     }
   } 
   else 
@@ -148,26 +150,32 @@ void loop()
         delay(10);
       }
       LEDTrack = true;
+      publishToPubNub(1);
     }
   }
 
-  if( millis()-lastRead >= sampleRate )
+  /*if( millis()-lastRead >= sampleRate )
   {
     publishToPubNub();
     lastRead = millis();
-  }
+  }*/
 }
 
 /* -------------------- PubNub -------------------- */
-void publishToPubNub()
+void publishToPubNub(int num)
 {
   WiFiClient *client;
   DynamicJsonBuffer messageBuffer(600);                        // Create a memory buffer to hold a JSON Object
   JsonObject& pMessage = messageBuffer.createObject();         // Create a new JSON object in that buffer
 
-  // The messages
-  pMessage["who"] = whoAmI;
-  pMessage["averageVelocity"] = message;
+  if ( num = 0 ) {
+    pMessage["who"] = whoAmI;
+    pMessage["averageVelocity"] = 0;
+  } else {
+    // The messages
+    pMessage["who"] = whoAmI;
+    pMessage["averageVelocity"] = message;
+  }
 
   message = 0;
   countMessage = 0;
